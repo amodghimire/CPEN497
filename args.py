@@ -128,6 +128,14 @@ def parse_arguments():
         "--config", type=str, default=None, help="Config file to use"
     )
 
+    parser.add_argument(
+        "--attack_type", 
+        type=str, 
+        default="torch_sort", pis
+        choices=["torch_sort", "circular_rotation", "reverse_firsthalf_rotation", "reverse_first_secondhalf_rotation"],
+        help="Type of attack to use: torch_sort, circular_rotation, reverse_first_secondhalf_rotation, or reverse_firsthalf_rotation (default: torch_sort)"
+    )
+
     args = parser.parse_args()
 
     # Allow for use from notebook without config file

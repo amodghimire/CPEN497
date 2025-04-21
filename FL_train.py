@@ -23,8 +23,8 @@ def FRL_train(tr_loaders, te_loader):
     args.bn_type="NonAffineNoStatsBN"    
     
     n_attackers = int(args.nClients * args.at_fractions)
-    sss = "fraction of maliciou clients: %.2f | total number of malicious clients: %d"%(args.at_fractions,
-                                                                                        n_attackers)
+    sss = "fraction of maliciou clients: %.2f | total number of malicious clients: %d | attack type: %s"%(args.at_fractions,
+                                                                                        n_attackers, args.attack_type)
     print (sss)
     with (args.run_base_dir / "output.txt").open("a") as f:
         f.write("\n"+str(sss))
@@ -91,7 +91,14 @@ def FRL_train(tr_loaders, te_loader):
 
             for n, m in FLmodel.named_modules():
                 if hasattr(m, "scores"):
-                    rank_mal_agr=torch.sort(sum_args_sorts_mal[str(n)], descending=True)[1]
+                    if args.attack_type == "torch_sort":
+                        rank_mal_agr = torch.sort(sum_args_sorts_mal[str(n)], descending=True)[1]
+                    elif args.attack_type == "circular_rotation":
+                        rank_mal_agr = circular_rotation(sum_args_sorts_mal[str(n)])
+                    elif args.attack_type == "reverse_firsthalf_rotation":
+                        rank_mal_agr = reverse_firsthalf_rotation(sum_args_sorts_mal[str(n)])
+                    elif args.attack_type == "reverse_first_secondhalf_rotation":
+                        rank_mal_agr = reverser_middle_firsthalf_rotation(sum_args_sorts_mal[str(n)])
                     for kk in round_malicious:
                         user_updates[str(n)]=rank_mal_agr[None,:] if len(user_updates[str(n)]) == 0 else torch.cat((user_updates[str(n)], rank_mal_agr[None,:]), 0)
             del sum_args_sorts_mal
@@ -109,7 +116,24 @@ def FRL_train(tr_loaders, te_loader):
                 f.write("\n"+str(sss))
         e+=1
         
-        
+def circular_rotation(rank):
+    middle = len(rank)//2
+    return torch.cat((rank[middle:], rank[:middle]))
+
+def reverse_firsthalf_rotation(rank):
+    middle = len(rank)//2
+    first_half_reversed = rank[:middle].flip(0)
+    return torch.cat((rank[middle:],first_half_reversed))
+
+def reverser_middle_firsthalf_rotation(rank):
+    middle = len(rank)//2
+    first_half = rank[:middle]
+    first_half_middle = len (first_half)//2
+    first_of_first_half = first_half[:first_half_middle]
+    second_of_first_half = first_half[first_half_middle:]
+    second_half = rank[middle:]
+    return torch.cat((second_half, first_of_first_half, second_of_first_half.flip(0)))
+
 #####################################FedAVG#########################################
 def FedAVG(tr_loaders, te_loader):
     print ("#########Federated Learning using FedAVG############")
